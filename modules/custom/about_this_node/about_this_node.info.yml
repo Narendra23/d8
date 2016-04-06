@@ -1,0 +1,6 @@
+name: About this node
+description: 'Provides node information block'
+package: Custom
+
+type: module
+core: 8.x
