@@ -1,0 +1,143 @@
+<?php
+
+/**
+ * @file
+ * Module file for about_this_node.
+ */
+
+use Drupal\Core\Block\BlockPluginInterface;
+use Drupal\Core\Link;
+use Drupal\Core\Url;
+use Drupal\node\NodeInterface;
+
+
+function about_this_node_theme($existing, $type, $theme, $path) {
+  return array(
+      'about_this_node' => array(
+          'variables' => array('node_info' => ''),
+      ),
+  );
+}
+
+/**
+ * Gather information about the node and return it as a keyed array.
+ */
+function about_this_node_get_info($node) {
+  $node_info = array();
+
+  // Node ID
+  $node_info['node_id'] = array(
+      'label' => t('Node ID (NID):'),
+      'value' => $node->id(),
+  );
+
+  // Node type
+  $node_info['node_type'] = array(
+      'label' => t('Node type:'),
+      'value' => $node->getType(),
+  );
+
+  // Gather author info
+  $author_uid = $node->getOwnerId();
+  
+  $author = '';
+  $author_output = '';
+  if ($author_uid == '0') { // Check if author is anonymous
+    $author_output = \Drupal::config('user.settings')->get('anonymous');
+  }
+  else {
+    $author = user_load($author_uid);
+//     pr($author);
+    $author_username = $author->getUsername();    
+    $url = Url::fromRoute('entity.user.canonical', array('user' => $author_uid));
+    $author_output = \Drupal::l($author_username, $url);    
+  }
+// pr($author_output);
+  // Author name/time
+  $node_info['created'] = array(
+      'label' => t('Created on:'),
+      'value' => array(
+          'created_on' => array(
+              'label' => t('on'),
+              'value' => \Drupal::service('date.formatter')->format($node->getCreatedTime(), 'short'),
+          ),
+          'created_by' => array(
+              'label' => t('Created by'),
+              'value' => $author_output,
+          ),
+      ),
+  );
+//   pr($author_output);
+  // Gather last updated author info
+  $update_author_uid = $node->getRevisionAuthor()->id();
+  $update_author = '';
+  $update_author_output = '';
+  if ($update_author_uid == '0') { // Check if author is anonymous
+    $update_author_output = \Drupal::config('user.settings')->get('anonymous');
+  }
+  else {
+    $update_author = user_load($update_author_uid);
+    $update_author_username = $update_author->getUsername();
+    $url = Url::fromRoute('entity.user.canonical', array('user' => $update_author_uid));
+    $update_author_output = \Drupal::l($update_author_username, $url);
+  }
+  // Last updated author name/time
+  $node_info['updated'] = array(
+      'label' => t('Last updated:'),
+  );
+
+  // Check if node has never been updated
+  if ($node->getCreatedTime() == $node->getChangedTime()) {
+    $node_info['updated']['value'] = t('Never');
+  }
+  else {
+    $node_info['updated']['value'] = array(
+        'updated_on' => array(
+            'label' => t('on'),
+            'value' => \Drupal::service('date.formatter')->format($node->getChangedTime(), 'short'),
+        ),
+        'updated_by' => array(
+            'label' => t('Updated by'),
+            'value' => $update_author_output,
+        ),
+    );
+  }
+
+  // Published status
+  $node_info['published'] = array(
+      'label' => t('Published:'),
+  );
+  $node_info['published']['value'] = ($node->isPublished() == 1) ? t('Yes') : t('No');
+
+  // Promoted to front page status
+  $node_info['promoted'] = array(
+      'label' => t('Promoted:'),
+  );
+  $node_info['promoted']['value'] = ($node->isPromoted() == 1) ? t('Yes') : t('No');   
+
+  // Sticky status
+  $node_info['stickied'] = array(
+      'label' => t('Stickied:'),
+  );
+  $node_info['stickied']['value'] = ($node->isSticky() == 1) ? t('Yes') : t('No');
+
+//   Commenting status
+  $node_info['commenting'] = array(
+      'label' => t('Commenting:'),
+  );
+  
+  $comments = comment_node_search_result($node);
+  $comment_value = ($comments) ? $comments['comment']->__toString() : t('Comments not open');
+  
+  $node_info['commenting']['value'] = $comment_value;
+  return $node_info;
+}
+
+function pr($data, $die = TRUE) {
+  echo '<pre>';
+  print_r($data);
+  echo '</pre>';
+  if($die){
+    die();
+  }
+}
